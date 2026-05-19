@@ -234,6 +234,47 @@ body {
 }
 .subtopic.has-note .subtopic-meta { opacity: 0.6; }
 
+/* ── CHECKMARK ── */
+.check-btn {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.18);
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s, background 0.15s;
+  font-size: 10px;
+  color: transparent;
+  margin-left: 4px;
+}
+.check-btn:hover { border-color: var(--accent2); color: rgba(62,207,142,0.4); }
+.subtopic.done .check-btn {
+  background: var(--accent2);
+  border-color: var(--accent2);
+  color: #071a10;
+}
+.subtopic.done .subtopic-label {
+  text-decoration: line-through;
+  text-decoration-color: rgba(139,144,160,0.4);
+}
+.ch-progress {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--muted);
+  background: var(--bg3);
+  padding: 2px 7px;
+  border-radius: 20px;
+  margin-right: 2px;
+}
+.ch-progress.complete {
+  background: rgba(62,207,142,0.15);
+  color: var(--accent2);
+}
+
 /* ── NOTES PANEL ── */
 .overlay {
   display: none;
@@ -438,10 +479,11 @@ textarea#notesText::placeholder { color: var(--muted); opacity: 0.5; }
 <!-- Main layout -->
 <div class="layout">
   <div class="progress-row">
-    <span class="progress-label" id="progressLabel">0 / 64 topics noted</span>
+    <span class="progress-label" id="progressLabel">0 / 64 completed</span>
     <div class="progress-bar-bg">
       <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
     </div>
+    <span class="progress-label" id="notedLabel" style="color:var(--accent1)">0 noted</span>
   </div>
   <div id="chapters"></div>
 </div>
@@ -2018,6 +2060,7 @@ ORDER BY trade_date;
 
 // ── STATE ─────────────────────────────────────────
 let notes = {};      // { "ch0_t2": "my note text", ... }
+let checked = {};    // { "ch0_t2": true, ... }
 let currentKey = null;
 let driveFileId = null;
 let isSyncing = false;
@@ -2032,11 +2075,13 @@ function buildChapters() {
   CHAPTERS.forEach((ch, ci) => {
     const div = document.createElement('div');
     div.className = 'chapter';
+    div.dataset.ci = ci;
     div.innerHTML = `
       <div class="chapter-header" data-ci="${ci}">
         <span class="ch-num">#${ch.n}</span>
         <span class="ch-dot" style="background:${ch.color}"></span>
         <span class="ch-title">${ch.title}</span>
+        <span class="ch-progress" id="ch-prog-${ci}">0/${ch.topics.length}</span>
         <span class="ch-count">${ch.topics.length} topics</span>
         <span class="ch-arrow">›</span>
       </div>
@@ -2049,6 +2094,7 @@ function buildChapters() {
             <span class="note-dot"></span>
             <span class="subtopic-label">${t}</span>
             <span class="subtopic-meta">notes ›</span>
+            <span class="check-btn" data-check="${key}" title="Mark complete">✓</span>
           </div>`;
         }).join('')}
       </div>`;
@@ -2056,6 +2102,18 @@ function buildChapters() {
   });
 
   container.addEventListener('click', e => {
+    // checkmark click — toggle done, don't open panel
+    const chk = e.target.closest('.check-btn');
+    if (chk) {
+      e.stopPropagation();
+      const key = chk.dataset.check;
+      checked[key] = !checked[key];
+      if (!checked[key]) delete checked[key];
+      refreshUI();
+      persistLocal();
+      if (isSignedIn()) syncToDrive();
+      return;
+    }
     const hdr = e.target.closest('.chapter-header');
     if (hdr) {
       hdr.closest('.chapter').classList.toggle('open');
@@ -2070,17 +2128,38 @@ function buildChapters() {
   });
 }
 
-function refreshDots() {
+function refreshUI() {
+  // update note dots and done state per subtopic
   document.querySelectorAll('.subtopic').forEach(el => {
     const key = el.dataset.key;
-    const has = !!(notes[key] && notes[key].trim());
-    el.classList.toggle('has-note', has);
+    const hasNote = !!(notes[key] && notes[key].trim());
+    const isDone = !!checked[key];
+    el.classList.toggle('has-note', hasNote);
+    el.classList.toggle('done', isDone);
   });
-  const noted = Object.values(notes).filter(v=>v&&v.trim()).length;
+
+  // update per-chapter progress badges
+  CHAPTERS.forEach((ch, ci) => {
+    const total = ch.topics.length;
+    const done = ch.topics.filter((_, ti) => checked[`ch${ci}_t${ti}`]).length;
+    const el = document.getElementById(`ch-prog-${ci}`);
+    if (el) {
+      el.textContent = `${done}/${total}`;
+      el.classList.toggle('complete', done === total);
+    }
+  });
+
+  // update overall progress bar
+  const totalDone = Object.keys(checked).filter(k => checked[k]).length;
+  const totalNoted = Object.values(notes).filter(v => v && v.trim()).length;
   document.getElementById('progressLabel').textContent =
-    `${noted} / ${TOTAL_TOPICS} topics noted`;
+    `${totalDone} / ${TOTAL_TOPICS} completed`;
   document.getElementById('progressFill').style.width =
-    `${Math.round(noted/TOTAL_TOPICS*100)}%`;
+    `${Math.round(totalDone / TOTAL_TOPICS * 100)}%`;
+
+  // secondary noted indicator
+  const notedEl = document.getElementById('notedLabel');
+  if (notedEl) notedEl.textContent = `${totalNoted} noted`;
 }
 
 // ── NOTES PANEL ───────────────────────────────────
@@ -2114,7 +2193,7 @@ function saveNote() {
   } else {
     delete notes[currentKey];
   }
-  refreshDots();
+  refreshUI();
   persistLocal();
   const hint = document.getElementById('saveHint');
   hint.textContent = '✓ saved';
@@ -2138,12 +2217,24 @@ document.getElementById('notesText').addEventListener('keydown', e => {
 
 // ── LOCAL FALLBACK ────────────────────────────────
 function persistLocal() {
-  localStorage.setItem('sql_notes_local', JSON.stringify(notes));
+  localStorage.setItem('sql_notes_local', JSON.stringify({ notes, checked }));
 }
 
 function loadLocal() {
   const raw = localStorage.getItem('sql_notes_local');
-  if (raw) { try { notes = JSON.parse(raw); } catch(e) {} }
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      // support both old format (plain notes object) and new format
+      if (parsed.notes !== undefined) {
+        notes = parsed.notes || {};
+        checked = parsed.checked || {};
+      } else {
+        notes = parsed; // old format
+        checked = {};
+      }
+    } catch(e) {}
+  }
 }
 
 // ── GOOGLE DRIVE SYNC ─────────────────────────────
@@ -2184,7 +2275,7 @@ async function initAuth() {
       document.getElementById('signOutBtn').style.display = '';
       setSyncStatus('syncing…');
       await loadFromDrive();
-      refreshDots();
+      refreshUI();
       setSyncStatus('synced ✓', 'ok');
     }
   });
@@ -2241,8 +2332,13 @@ async function loadFromDrive() {
       `https://www.googleapis.com/drive/v3/files/${id}?alt=media`
     );
     const remote = await res.json();
-    // merge: remote wins over local
-    notes = Object.assign({}, notes, remote);
+    // support old format (plain notes) and new format { notes, checked }
+    if (remote.notes !== undefined) {
+      notes = Object.assign({}, notes, remote.notes);
+      checked = Object.assign({}, checked, remote.checked || {});
+    } else {
+      notes = Object.assign({}, notes, remote);
+    }
     persistLocal();
   } catch(e) {
     console.warn('Drive load error:', e);
@@ -2255,7 +2351,7 @@ async function syncToDrive() {
   setSyncStatus('syncing…');
   try {
     const blob = new Blob(
-      [JSON.stringify(notes)],
+      [JSON.stringify({ notes, checked })],
       { type: 'application/json' }
     );
     if (driveFileId) {
@@ -2339,7 +2435,7 @@ async function init() {
     }
   });
   buildChapters();
-  refreshDots();
+  refreshUI();
 
   if (CLIENT_ID) {
     document.getElementById('setup-banner')
