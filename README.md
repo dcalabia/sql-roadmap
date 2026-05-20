@@ -818,15 +818,20 @@ SELECT 'Hello, SQL!' AS message;`,
 -- orders(id, user_id, amount, created_at)
 -- user_id in orders references id in users (foreign key)
 
-SELECT * FROM users;
-SELECT * FROM orders;`,
+SELECT *
+FROM users;
+
+SELECT *
+FROM orders;`,
 
 "ch0_t2": `-- SQL: structured, schema-enforced, ACID transactions
 -- NoSQL: flexible schema, horizontal scaling (MongoDB, Redis)
 -- SQL is ideal for: analytics, reporting, joins
 
 -- SQL example
-SELECT name, email FROM users WHERE active = true;
+SELECT name, email
+FROM   users
+WHERE  active = true;
 
 -- MongoDB equivalent (not SQL, just reference):
 -- db.users.find({ active: true }, { name: 1, email: 1 })`,
@@ -855,14 +860,16 @@ LIMIT 5;`,
 
 "ch1_t0": `-- Select specific columns
 SELECT first_name, last_name, email
-FROM users;
+FROM   users;
 
 -- Select all columns
-SELECT * FROM users;
+SELECT *
+FROM   users;
 
 -- Select with a calculated column
-SELECT name, price, quantity, price * quantity AS total
-FROM products;`,
+SELECT name, price, quantity,
+       price * quantity AS total
+FROM   products;`,
 
 "ch1_t1": `-- AS renames a column in output (doesn't change the table)
 SELECT
@@ -878,54 +885,71 @@ FROM orders
 ORDER BY total_value DESC;`,
 
 "ch1_t2": `-- Remove duplicate rows from result
-SELECT DISTINCT status FROM orders;
+SELECT DISTINCT status
+FROM   orders;
 
 -- DISTINCT on multiple columns (combo must be unique)
-SELECT DISTINCT city, country FROM customers;
+SELECT DISTINCT city, country
+FROM   customers;
 
 -- Count unique values
 SELECT COUNT(DISTINCT user_id) AS unique_buyers
-FROM orders;`,
+FROM   orders;`,
 
 "ch1_t3": `-- Sort ascending (default)
-SELECT name, price FROM products ORDER BY price ASC;
+SELECT name, price
+FROM   products
+ORDER BY price ASC;
 
 -- Sort descending
-SELECT name, price FROM products ORDER BY price DESC;
+SELECT name, price
+FROM   products
+ORDER BY price DESC;
 
 -- Sort by multiple columns
-SELECT last_name, first_name FROM users
+SELECT last_name, first_name
+FROM   users
 ORDER BY last_name ASC, first_name ASC;
 
 -- NULLs last (Postgres default for ASC)
-SELECT name, score FROM results ORDER BY score ASC NULLS LAST;`,
+SELECT name, score
+FROM   results
+ORDER BY score ASC NULLS LAST;`,
 
 "ch1_t4": `-- Return first 10 rows
-SELECT * FROM orders LIMIT 10;
+SELECT *
+FROM   orders
+LIMIT  10;
 
 -- Pagination: page 2 (rows 11-20)
-SELECT * FROM orders
+SELECT *
+FROM   orders
 ORDER BY created_at DESC
-LIMIT 10 OFFSET 10;
+LIMIT  10
+OFFSET 10;
 
 -- OFFSET formula: (page_number - 1) * page_size
 -- Page 3 = OFFSET 20
 
 -- SQL Server alternative
-SELECT TOP 10 * FROM orders;`,
+SELECT TOP 10 *
+FROM   orders;`,
 
 "ch1_t5": `-- Select all columns (use carefully in production)
-SELECT * FROM users;
+SELECT *
+FROM   users;
 
 -- Avoid SELECT * in:
 -- JOINs (column name collisions)
 -- Production queries (fetches unnecessary data)
 
 -- Better: be explicit
-SELECT id, name, email, created_at FROM users;
+SELECT id, name, email, created_at
+FROM   users;
 
 -- BigQuery: exclude one column
-SELECT * EXCEPT (password) FROM users;`,
+SELECT * EXCEPT (password)
+FROM   users;`,
 
 "ch2_t0": `-- Basic CREATE TABLE
 CREATE TABLE users (
@@ -1148,18 +1172,25 @@ BEGIN;
 COMMIT;  -- only the UPDATE is committed`,
 
 "ch4_t0": `-- Filter rows matching a condition
-SELECT * FROM users WHERE active = true;
+SELECT *
+FROM   users
+WHERE  active = true;
 
 -- Multiple conditions
-SELECT * FROM orders
-WHERE status = 'shipped' AND total > 100;
+SELECT *
+FROM   orders
+WHERE  status = 'shipped'
+  AND  total > 100;
 
 -- WHERE with dates
-SELECT * FROM trades
-WHERE trade_date = '2024-01-15';
+SELECT *
+FROM   trades
+WHERE  trade_date = '2024-01-15';
 
 -- WHERE with expression
-SELECT * FROM products WHERE price * qty > 1000;`,
+SELECT *
+FROM   products
+WHERE  price * qty > 1000;`,
 
 "ch4_t1": `-- Comparison operators:
 -- =    equal
@@ -1169,92 +1200,141 @@ SELECT * FROM products WHERE price * qty > 1000;`,
 -- >=   greater than or equal
 -- <=   less than or equal
 
-SELECT * FROM trades WHERE pnl > 0;         -- winners
-SELECT * FROM trades WHERE pnl <> 0;        -- not breakeven
-SELECT * FROM products WHERE price >= 10 AND price <= 50;`,
+SELECT *
+FROM   trades
+WHERE  pnl > 0;          -- winners
+
+SELECT *
+FROM   trades
+WHERE  pnl <> 0;         -- not breakeven
+
+SELECT *
+FROM   products
+WHERE  price >= 10
+  AND  price <= 50;`,
 
 "ch4_t2": `-- AND: both conditions must be true
-SELECT * FROM trades
-WHERE is_winner = true AND pnl > 100;
+SELECT *
+FROM   trades
+WHERE  is_winner = true
+  AND  pnl > 100;
 
 -- OR: at least one condition must be true
-SELECT * FROM users
-WHERE plan = 'pro' OR plan = 'enterprise';
+SELECT *
+FROM   users
+WHERE  plan = 'pro'
+  OR   plan = 'enterprise';
 
 -- NOT: negates a condition
-SELECT * FROM orders WHERE NOT status = 'cancelled';
+SELECT *
+FROM   orders
+WHERE  NOT status = 'cancelled';
 
 -- Parentheses control evaluation order!
-SELECT * FROM trades
-WHERE (ticker = 'AAPL' OR ticker = 'TSLA')
-  AND pnl > 0;`,
+SELECT *
+FROM   trades
+WHERE  (ticker = 'AAPL' OR ticker = 'TSLA')
+  AND  pnl > 0;`,
 
 "ch4_t3": `-- IN: match any value in a list
-SELECT * FROM users
-WHERE status IN ('active', 'trial', 'paused');
+SELECT *
+FROM   users
+WHERE  status IN ('active', 'trial', 'paused');
 
 -- NOT IN: exclude list
-SELECT * FROM trades
-WHERE ticker NOT IN ('AMTD', 'HMBL');
+SELECT *
+FROM   trades
+WHERE  ticker NOT IN ('AMTD', 'HMBL');
 
 -- IN with a subquery
-SELECT * FROM users
-WHERE id IN (SELECT user_id FROM orders WHERE total > 500);
+SELECT *
+FROM   users
+WHERE  id IN (
+  SELECT user_id
+  FROM   orders
+  WHERE  total > 500
+);
 
 -- Caution: NOT IN with NULLs returns no rows
 -- Use NOT EXISTS instead when NULLs are possible`,
 
 "ch4_t4": `-- BETWEEN: inclusive range (same as >= AND <=)
-SELECT * FROM trades
-WHERE pnl BETWEEN -50 AND 50;  -- includes -50 and 50
+SELECT *
+FROM   trades
+WHERE  pnl BETWEEN -50 AND 50;  -- includes -50 and 50
 
 -- Date range
-SELECT * FROM trades
-WHERE trade_date BETWEEN '2024-01-01' AND '2024-12-31';
+SELECT *
+FROM   trades
+WHERE  trade_date BETWEEN '2024-01-01' AND '2024-12-31';
 
 -- NOT BETWEEN
-SELECT * FROM products WHERE price NOT BETWEEN 10 AND 20;
+SELECT *
+FROM   products
+WHERE  price NOT BETWEEN 10 AND 20;
 
 -- For timestamps, prefer explicit >= / < to avoid end-of-day issues:
-WHERE trade_date >= '2024-01-01' AND trade_date < '2025-01-01'`,
+SELECT *
+FROM   trades
+WHERE  trade_date >= '2024-01-01'
+  AND  trade_date <  '2025-01-01';`,
 
 "ch4_t5": `-- LIKE pattern matching: % = any chars, _ = one char
 
 -- Starts with 'A'
-SELECT * FROM tickers WHERE symbol LIKE 'A%';
+SELECT *
+FROM   tickers
+WHERE  symbol LIKE 'A%';
 
 -- Ends with domain
-SELECT * FROM users WHERE email LIKE '%@gmail.com';
+SELECT *
+FROM   users
+WHERE  email LIKE '%@gmail.com';
 
 -- Contains word
-SELECT * FROM courses WHERE title LIKE '%SQL%';
+SELECT *
+FROM   courses
+WHERE  title LIKE '%SQL%';
 
 -- Exactly 4 characters
-SELECT * FROM codes WHERE code LIKE '____';
+SELECT *
+FROM   codes
+WHERE  code LIKE '____';
 
 -- NOT LIKE
-SELECT * FROM products WHERE name NOT LIKE '%Discontinued%';
+SELECT *
+FROM   products
+WHERE  name NOT LIKE '%Discontinued%';
 
 -- Case-insensitive (Postgres)
-SELECT * FROM users WHERE email ILIKE '%gmail%';`,
+SELECT *
+FROM   users
+WHERE  email ILIKE '%gmail%';`,
 
 "ch4_t6": `-- NULL = missing/unknown (NOT the same as 0 or '')
 -- Cannot use = or != with NULL
 
 -- Find rows with NULL
-SELECT * FROM trades WHERE exit_price IS NULL;
+SELECT *
+FROM   trades
+WHERE  exit_price IS NULL;
 
 -- Find rows without NULL
-SELECT * FROM users WHERE phone IS NOT NULL;
+SELECT *
+FROM   users
+WHERE  phone IS NOT NULL;
 
 -- COALESCE: return first non-NULL value
-SELECT name, COALESCE(phone, 'N/A') AS phone FROM users;
+SELECT name, COALESCE(phone, 'N/A') AS phone
+FROM   users;
 
 -- NULLIF: return NULL if two values are equal (avoids div by 0)
-SELECT 100 / NULLIF(attempts, 0) AS hit_rate FROM stats;
+SELECT 100 / NULLIF(attempts, 0) AS hit_rate
+FROM   stats;
 
 -- NULL in math: any arithmetic with NULL = NULL
-SELECT COALESCE(pnl, 0) + 50 AS adjusted FROM trades;`,
+SELECT COALESCE(pnl, 0) + 50 AS adjusted
+FROM   trades;`,
 
 "ch5_t0": `-- INNER JOIN: rows matching in BOTH tables only
 SELECT
@@ -1342,14 +1422,18 @@ JOIN trades b
   AND a.id < b.id;  -- avoid duplicate pairs`,
 
 "ch5_t5": `-- UNION: combines two queries, removes duplicates
-SELECT name FROM customers
+SELECT name
+FROM   customers
 UNION
-SELECT name FROM suppliers;
+SELECT name
+FROM   suppliers;
 
 -- UNION ALL: keeps duplicates (faster, no dedup)
-SELECT ticker FROM trades_2023
+SELECT ticker
+FROM   trades_2023
 UNION ALL
-SELECT ticker FROM trades_2024;
+SELECT ticker
+FROM   trades_2024;
 
 -- Rules:
 -- Same number of columns in both queries
@@ -1357,21 +1441,27 @@ SELECT ticker FROM trades_2024;
 -- Column names come from the FIRST query
 
 -- Combine historical + current with source label
-SELECT id, total, 'historical' AS source FROM old_orders
+SELECT id, total, 'historical' AS source
+FROM   old_orders
 UNION ALL
-SELECT id, total, 'current'    AS source FROM orders;`,
+SELECT id, total, 'current' AS source
+FROM   orders;`,
 
 "ch5_t6": `-- Subquery in WHERE
-SELECT * FROM trades
-WHERE ticker IN (
-  SELECT ticker FROM watchlist WHERE priority = 'high'
+SELECT *
+FROM   trades
+WHERE  ticker IN (
+  SELECT ticker
+  FROM   watchlist
+  WHERE  priority = 'high'
 );
 
 -- Subquery in FROM (derived table / inline view)
 SELECT t.ticker, t.avg
 FROM (
   SELECT ticker, AVG(pnl) AS avg
-  FROM trades GROUP BY ticker
+  FROM   trades
+  GROUP BY ticker
 ) t
 WHERE t.avg > 0;
 
@@ -1381,89 +1471,115 @@ SELECT ticker, pnl,
 FROM trades;
 
 -- Correlated subquery (references outer query)
-SELECT * FROM trades t
-WHERE pnl > (
-  SELECT AVG(pnl) FROM trades WHERE ticker = t.ticker
+SELECT *
+FROM   trades t
+WHERE  pnl > (
+  SELECT AVG(pnl)
+  FROM   trades
+  WHERE  ticker = t.ticker
 );`,
 
 "ch6_t0": `-- UPPER / LOWER
-SELECT UPPER('hello');              -- 'HELLO'
-SELECT LOWER(email) FROM users;
+SELECT UPPER('hello');                        -- 'HELLO'
+
+SELECT LOWER(email)
+FROM   users;
 
 -- TRIM (remove whitespace)
-SELECT TRIM('  hello  ');           -- 'hello'
-SELECT LTRIM(str), RTRIM(str);
+SELECT TRIM('  hello  ');                     -- 'hello'
 
 -- LENGTH
-SELECT LENGTH('SQL');               -- 3
+SELECT LENGTH('SQL');                         -- 3
 
 -- SUBSTRING
-SELECT SUBSTRING('Hello World', 1, 5);  -- 'Hello'
+SELECT SUBSTRING('Hello World', 1, 5);        -- 'Hello'
 
 -- REPLACE
-SELECT REPLACE('foo bar', ' ', '_');    -- 'foo_bar'
+SELECT REPLACE('foo bar', ' ', '_');          -- 'foo_bar'
 
 -- CONCAT
-SELECT CONCAT(first_name, ' ', last_name) AS full_name FROM users;
-SELECT first_name || ' ' || last_name AS full_name FROM users; -- Postgres
+SELECT CONCAT(first_name, ' ', last_name) AS full_name
+FROM   users;
+
+-- Postgres shorthand
+SELECT first_name || ' ' || last_name AS full_name
+FROM   users;
 
 -- POSITION
-SELECT POSITION('@' IN email) FROM users;`,
+SELECT POSITION('@' IN email)
+FROM   users;`,
 
 "ch6_t1": `-- ROUND
-SELECT ROUND(3.14159, 2);      -- 3.14
-SELECT ROUND(pnl, 2) FROM trades;
+SELECT ROUND(3.14159, 2);           -- 3.14
+
+SELECT ROUND(pnl, 2)
+FROM   trades;
 
 -- CEIL / FLOOR
-SELECT CEIL(4.1);              -- 5
-SELECT FLOOR(4.9);             -- 4
+SELECT CEIL(4.1);                   -- 5
+SELECT FLOOR(4.9);                  -- 4
 
 -- ABS (absolute value)
-SELECT ABS(-25);               -- 25
-SELECT ABS(pnl) AS abs_pnl FROM trades;
+SELECT ABS(-25);                    -- 25
+
+SELECT ABS(pnl) AS abs_pnl
+FROM   trades;
 
 -- MOD (remainder)
-SELECT MOD(10, 3);             -- 1
+SELECT MOD(10, 3);                  -- 1
 
 -- POWER / SQRT
-SELECT POWER(2, 10);           -- 1024
-SELECT SQRT(144);              -- 12
+SELECT POWER(2, 10);                -- 1024
+SELECT SQRT(144);                   -- 12
 
 -- TRUNC (truncate without rounding)
-SELECT TRUNC(3.99);            -- 3
-SELECT TRUNC(3.99, 1);         -- 3.9`,
+SELECT TRUNC(3.99);                 -- 3
+SELECT TRUNC(3.99, 1);              -- 3.9`,
 
 "ch6_t2": `-- Current date/time
-SELECT NOW();                  -- timestamp with timezone
-SELECT CURRENT_DATE;           -- date only
+SELECT NOW();                           -- timestamp with timezone
+SELECT CURRENT_DATE;                    -- date only
 
 -- Extract parts (Postgres)
-SELECT EXTRACT(YEAR  FROM trade_date) AS yr FROM trades;
-SELECT EXTRACT(MONTH FROM trade_date) AS mo FROM trades;
-SELECT EXTRACT(DOW   FROM trade_date) AS weekday FROM trades;
+SELECT EXTRACT(YEAR  FROM trade_date) AS yr
+FROM   trades;
+
+SELECT EXTRACT(MONTH FROM trade_date) AS mo
+FROM   trades;
+
+SELECT EXTRACT(DOW   FROM trade_date) AS weekday
+FROM   trades;
 
 -- Date arithmetic
-SELECT NOW() - INTERVAL '7 days';              -- 7 days ago
-SELECT trade_date + INTERVAL '30 days' FROM trades;
+SELECT NOW() - INTERVAL '7 days';      -- 7 days ago
+
+SELECT trade_date + INTERVAL '30 days'
+FROM   trades;
 
 -- Date difference
-SELECT NOW()::date - trade_date AS days_ago FROM trades;
+SELECT NOW()::date - trade_date AS days_ago
+FROM   trades;
 
 -- Format date
-SELECT TO_CHAR(trade_date, 'YYYY-MM-DD') FROM trades;
+SELECT TO_CHAR(trade_date, 'YYYY-MM-DD')
+FROM   trades;
+
 SELECT TO_CHAR(NOW(), 'Day, Mon DD YYYY');`,
 
 "ch6_t3": `-- COALESCE: return first non-NULL value
-SELECT COALESCE(phone, mobile, 'No contact') AS contact FROM users;
+SELECT COALESCE(phone, mobile, 'No contact') AS contact
+FROM   users;
 
 -- Replace NULLs in calculations
-SELECT ticker, COALESCE(pnl, 0) AS pnl FROM trades;
+SELECT ticker, COALESCE(pnl, 0) AS pnl
+FROM   trades;
 
 -- NULLIF: return NULL if two values are equal
-SELECT NULLIF(score, 0);          -- 0 becomes NULL
+SELECT NULLIF(score, 0);              -- 0 becomes NULL
 
 -- Safe division (avoid divide by zero)
-SELECT 100 / NULLIF(attempts, 0) AS hit_rate FROM stats;
+SELECT 100 / NULLIF(attempts, 0) AS hit_rate
+FROM   stats;
 
 -- Practical combo: win rate
 SELECT
@@ -1500,16 +1616,22 @@ FROM accounts;`,
 
 "ch6_t5": `-- CAST: convert a value to another data type
 SELECT CAST('2024-01-15' AS DATE);
-SELECT CAST(price AS INTEGER) FROM products;
+
+SELECT CAST(price AS INTEGER)
+FROM   products;
 
 -- Postgres shorthand ::
 SELECT '2024-01-15'::date;
-SELECT price::integer FROM products;
-SELECT trade_date::text FROM trades;
+
+SELECT price::integer
+FROM   products;
+
+SELECT trade_date::text
+FROM   trades;
 
 -- Safe division (integer / integer = integer in SQL!)
-SELECT 7 / 2;              -- 3 (integer division!)
-SELECT 7::decimal / 2;     -- 3.5 (cast first)
+SELECT 7 / 2;                  -- 3 (integer division!)
+SELECT 7::decimal / 2;         -- 3.5 (cast first)
 
 -- Text to number
 SELECT CAST('123.45' AS DECIMAL(10,2));
@@ -1909,21 +2031,33 @@ SET enable_seqscan = OFF;
 EXPLAIN SELECT * FROM trades WHERE ticker = 'AAPL';`,
 
 "ch9_t4": `-- 1. Use EXISTS instead of IN for large subqueries
+
 -- Slow:
-SELECT * FROM users WHERE id IN (SELECT user_id FROM orders);
+SELECT *
+FROM   users
+WHERE  id IN (SELECT user_id FROM orders);
+
 -- Fast:
-SELECT * FROM users u
-WHERE EXISTS (SELECT 1 FROM orders WHERE user_id = u.id);
+SELECT *
+FROM   users u
+WHERE  EXISTS (
+  SELECT 1
+  FROM   orders
+  WHERE  user_id = u.id
+);
 
 -- 2. Avoid functions on indexed columns in WHERE
+
 -- Slow (index skipped):
 WHERE EXTRACT(YEAR FROM trade_date) = 2024
+
 -- Fast:
-WHERE trade_date >= '2024-01-01' AND trade_date < '2025-01-01'
+WHERE trade_date >= '2024-01-01'
+  AND trade_date <  '2025-01-01'
 
 -- 3. Use UNION ALL instead of UNION (skip dedup if not needed)
--- 4. Push filters early -- filter before joining
--- 5. Avoid SELECT * -- only fetch needed columns
+-- 4. Push filters early — filter before joining
+-- 5. Avoid SELECT * — only fetch needed columns
 -- 6. Use CTEs or temp tables for repeated subqueries
 -- 7. LIMIT early when you only need a few rows`,
 
