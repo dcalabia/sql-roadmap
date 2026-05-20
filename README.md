@@ -2288,6 +2288,7 @@ function buildChapters() {
         <span class="ch-dot" style="background:${ch.color}"></span>
         <span class="ch-title">${ch.title}</span>
         <span class="ch-progress" id="ch-prog-${ci}">0/${ch.topics.length}</span>
+        <a href="sql-practice-tool.html?chapter=${ci}" onclick="event.stopPropagation()" style="font-family:var(--mono);font-size:10px;color:var(--accent1);text-decoration:none;padding:2px 8px;border:1px solid rgba(74,158,255,.3);border-radius:4px;margin-right:2px;background:rgba(74,158,255,.07);" title="Practice this chapter">drill ↗</a>
         <span class="ch-count">${ch.topics.length} topics</span>
         <span class="ch-arrow">›</span>
       </div>
