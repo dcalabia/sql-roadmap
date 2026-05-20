@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQL Practice</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#0f1117;--bg2:#171a23;--bg3:#1e2130;--bg4:#252840;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  --text:#e8eaf0;--muted:#7a8099;--muted2:#9ba0b2;
+  --blue:#4a9eff;--green:#3ecf8e;--orange:#ff7b54;--purple:#a78bfa;--red:#f87171;
+  --font:'IBM Plex Sans',sans-serif;--mono:'IBM Plex Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;}
+.wrap{max-width:760px;margin:0 auto;padding:28px 20px 80px;}
+
+.header{display:flex;align-items:center;gap:12px;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--border);}
+.logo{font-family:var(--mono);font-size:13px;color:var(--blue);letter-spacing:.06em;}
+.today-pill{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--muted);}
+.today-pill span{color:var(--orange);font-weight:500;}
+.sync-pill{font-family:var(--mono);font-size:10px;color:var(--muted);cursor:pointer;padding:3px 8px;border-radius:4px;border:1px solid var(--border);}
+.sync-pill.ok{color:var(--green);border-color:rgba(62,207,142,.3);}
+.sync-pill:hover{border-color:var(--border2);}
+
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:18px;}
+.stat{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;text-align:center;}
+.stat-val{font-family:var(--mono);font-size:20px;font-weight:500;}
+.stat-lbl{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.04em;}
+
+.weak-panel{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:18px;}
+.weak-title{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;}
+.drill-weak-btn{margin-left:auto;font-family:var(--mono);font-size:10px;padding:3px 10px;border-radius:5px;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);color:var(--orange);transition:background .15s;}
+.drill-weak-btn:hover{background:var(--bg4);}
+.weak-list{display:flex;flex-direction:column;gap:8px;}
+.weak-item{display:flex;align-items:center;gap:10px;}
+.weak-name{font-size:12px;min-width:190px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.weak-bar-bg{flex:1;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;}
+.weak-bar-fill{height:100%;border-radius:2px;transition:width .4s ease;}
+.weak-pct{font-family:var(--mono);font-size:10px;min-width:34px;text-align:right;}
+.weak-n{font-family:var(--mono);font-size:10px;color:var(--muted);min-width:28px;text-align:right;opacity:.6;}
+.weak-empty{font-size:12px;color:var(--muted);font-family:var(--mono);}
+
+.controls{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;margin-bottom:14px;align-items:end;}
+.ctrl-group label{display:block;font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;}
+select{width:100%;font-family:var(--font);font-size:12px;background:var(--bg2);border:1px solid var(--border2);border-radius:7px;padding:9px 12px;color:var(--text);outline:none;cursor:pointer;appearance:none;}
+select:focus{border-color:var(--blue);}
+option{background:var(--bg2);}
+
+.btn{font-family:var(--font);font-size:12px;font-weight:500;padding:9px 18px;border-radius:7px;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);color:var(--text);transition:background .15s;white-space:nowrap;}
+.btn:hover{background:var(--bg4);}
+.btn-primary{background:var(--blue);color:#fff;border-color:var(--blue);}
+.btn-primary:hover{background:#3a8eef;}
+.btn-primary:disabled,.btn-submit:disabled{opacity:.4;cursor:not-allowed;}
+.btn-submit{background:var(--green);color:#071a10;border-color:var(--green);font-weight:500;}
+.btn-submit:hover{background:#32bf7e;}
+
+.challenge-box{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:14px;}
+.ch-topbar{display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--bg3);border-bottom:1px solid var(--border);}
+.badge{font-family:var(--mono);font-size:10px;padding:2px 8px;border-radius:20px;}
+.diff-easy{background:rgba(62,207,142,.15);color:var(--green);}
+.diff-medium{background:rgba(74,158,255,.15);color:var(--blue);}
+.diff-hard{background:rgba(167,139,250,.15);color:var(--purple);}
+.ch-body{padding:18px 20px;}
+.scenario{font-size:13px;line-height:1.75;color:var(--muted2);margin-bottom:16px;}
+.schema-block{font-family:var(--mono);font-size:11px;line-height:1.65;background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:12px 14px;color:#9bbfef;margin-bottom:16px;white-space:pre-wrap;overflow-x:auto;}
+.question-text{font-size:14px;font-weight:500;line-height:1.6;}
+.hint-toggle{margin-top:10px;font-size:11px;font-family:var(--mono);color:var(--muted);cursor:pointer;user-select:none;}
+.hint-toggle:hover{color:var(--muted2);}
+.hint-body{font-size:11px;font-family:var(--mono);color:var(--orange);margin-top:6px;line-height:1.5;display:none;}
+.hint-body.show{display:block;}
+
+.editor-wrap{margin-bottom:14px;}
+.editor-label{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;}
+textarea{width:100%;font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--text);background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;resize:vertical;outline:none;min-height:140px;transition:border-color .15s;}
+textarea:focus{border-color:var(--border2);}
+textarea::placeholder{color:var(--muted);opacity:.45;}
+.submit-row{display:flex;align-items:center;gap:10px;margin-top:10px;}
+.submit-hint{font-family:var(--mono);font-size:11px;color:var(--muted);}
+
+.feedback-box{border-radius:10px;overflow:hidden;margin-top:14px;border:1px solid var(--border);}
+.fb-header{display:flex;align-items:center;gap:10px;padding:12px 16px;}
+.fb-correct{background:rgba(62,207,142,.1);border-color:rgba(62,207,142,.3)!important;}
+.fb-wrong{background:rgba(248,113,113,.08);border-color:rgba(248,113,113,.25)!important;}
+.fb-title{font-weight:500;font-size:13px;}
+.fb-score{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--muted);}
+.fb-body{padding:16px 20px;background:var(--bg2);border-top:1px solid var(--border);display:flex;flex-direction:column;gap:14px;}
+.fb-lbl{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;}
+.fb-text{font-size:13px;line-height:1.75;color:var(--muted2);}
+.fb-code{font-family:var(--mono);font-size:11px;line-height:1.65;background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:12px 14px;color:#9bbfef;white-space:pre-wrap;}
+
+.empty-state{text-align:center;padding:56px 20px;color:var(--muted);}
+.empty-icon{font-family:var(--mono);font-size:28px;margin-bottom:12px;}
+.empty-state p{font-size:13px;line-height:1.7;}
+.loading-state{display:flex;align-items:center;justify-content:center;gap:10px;padding:44px;color:var(--muted);font-family:var(--mono);font-size:12px;}
+.spinner{width:16px;height:16px;border:2px solid var(--border2);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.err{background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:8px;padding:12px 16px;font-family:var(--mono);font-size:11px;color:var(--red);line-height:1.6;}
+
+/* ── API KEY BANNER ── */
+#key-banner{background:#0d1a0d;border-bottom:1px solid rgba(62,207,142,.2);padding:10px 20px;font-size:12px;color:#7aab7a;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+#key-banner.hidden{display:none;}
+#key-banner a{color:var(--green);cursor:pointer;text-decoration:underline;}
+.key-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center;padding:20px;}
+.key-modal-overlay.open{display:flex;}
+.key-modal{background:var(--bg2);border:1px solid var(--border2);border-radius:12px;width:100%;max-width:480px;padding:28px;}
+.key-modal h2{font-family:var(--mono);font-size:14px;color:var(--green);margin-bottom:8px;}
+.key-modal p{font-size:12px;color:var(--muted2);line-height:1.7;margin-bottom:16px;}
+.key-modal input{width:100%;font-family:var(--mono);font-size:12px;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:9px 12px;color:var(--text);outline:none;margin-bottom:12px;}
+.key-modal input:focus{border-color:var(--green);}
+.key-modal-footer{display:flex;gap:10px;justify-content:flex-end;}
+</style>
+</head>
+<body>
+
+<!-- API Key Banner -->
+<div id="key-banner">
+  <span>🔑 No API key set.</span>
+  <a id="openKeyModal">Click here to add your Anthropic API key</a>
+  <span style="color:#4a7a4a">— required to generate challenges.</span>
+</div>
+
+<!-- API Key Modal -->
+<div class="key-modal-overlay" id="keyModal">
+  <div class="key-modal">
+    <h2>// anthropic_api_key</h2>
+    <p>This tool calls Claude directly from your browser. Your API key is stored only in localStorage and sent only to Anthropic's API.</p>
+    <p>Get a key at <strong style="color:var(--green)">console.anthropic.com</strong> → API Keys.</p>
+    <input type="password" id="keyInput" placeholder="sk-ant-api03-…" autocomplete="off">
+    <div class="key-modal-footer">
+      <button class="btn" id="cancelKey">Cancel</button>
+      <button class="btn btn-submit" id="saveKey">Save Key</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="header">
+    <div class="logo">SQL_PRACTICE</div>
+    <div class="today-pill">today <span id="todayCount">0</span> reps</div>
+    <span class="sync-pill" id="syncPill" title="Sync status">not signed in</span>
+    <button class="btn" id="keyBtn" style="font-size:10px;padding:3px 9px;font-family:var(--mono);">key ⚙</button>
+    <a href="sql-roadmap.html" style="font-family:var(--mono);font-size:10px;color:var(--muted);text-decoration:none;padding:3px 8px;border:1px solid var(--border);border-radius:4px;">← roadmap</a>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat"><div class="stat-val" id="sDone">0</div><div class="stat-lbl">Total done</div></div>
+    <div class="stat"><div class="stat-val" id="sCorrect">0</div><div class="stat-lbl">Correct</div></div>
+    <div class="stat"><div class="stat-val" id="sAcc">—</div><div class="stat-lbl">Accuracy</div></div>
+  </div>
+
+  <div class="weak-panel">
+    <div class="weak-title">Weakest chapters <button class="drill-weak-btn" id="drillWeakBtn">drill weakest ↗</button></div>
+    <div class="weak-list" id="weakList"><div class="weak-empty">No data yet — complete a few challenges to see your weak spots.</div></div>
+  </div>
+
+  <div class="controls">
+    <div class="ctrl-group"><label>Chapter</label><select id="chapterSel"></select></div>
+    <div class="ctrl-group"><label>Difficulty</label>
+      <select id="diffSel">
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" id="genBtn">Generate ↗</button>
+  </div>
+
+  <div id="challengeArea">
+    <div class="empty-state"><div class="empty-icon">{ }</div><p>Pick a chapter and hit <strong>Generate</strong> to start your drill.</p></div>
+  </div>
+
+  <div id="editorWrap" style="display:none;">
+    <div class="editor-wrap">
+      <div class="editor-label">Your query</div>
+      <textarea id="sqlInput" placeholder="SELECT ...&#10;FROM ...&#10;WHERE ..."></textarea>
+      <div class="submit-row">
+        <button class="btn btn-submit" id="submitBtn" disabled>Evaluate</button>
+        <span class="submit-hint" id="submitHint">write a query first</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="feedbackArea"></div>
+</div>
+
+<script>
+// ── SUPABASE ──────────────────────────────────────
+const SUPA_URL = 'https://hdylwayatghslwpndxtv.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhkeWx3YXlhdGdoc2x3cG5keHR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMTc5NDEsImV4cCI6MjA5NDg5Mzk0MX0.FD7n4ilbfSJ56iPo7Ni-NSlETg_PGYjmOqhYq6xzlq4';
+const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
+const TRACK = 'sql';
+let currentUser = null;
+
+// ── CHAPTERS ──────────────────────────────────────
+const CHAPTERS=[
+  {n:"01",title:"Introduction",color:"#4a9eff",topics:["What is SQL?","Relational databases","SQL vs NoSQL","Database clients & setup","Your first query"]},
+  {n:"02",title:"Query data (SELECT)",color:"#3ecf8e",topics:["SELECT basics","Column aliases","DISTINCT","ORDER BY","LIMIT & OFFSET","Wildcard SELECT *"]},
+  {n:"03",title:"Data definition (DDL)",color:"#ff7b54",topics:["CREATE TABLE","Data types","PRIMARY KEY","FOREIGN KEY","ALTER TABLE","DROP TABLE"]},
+  {n:"04",title:"Data manipulation (DML)",color:"#a78bfa",topics:["INSERT INTO","UPDATE","DELETE","TRUNCATE","Transactions (BEGIN/COMMIT)","ROLLBACK"]},
+  {n:"05",title:"Filtering data",color:"#4a9eff",topics:["WHERE clause","Comparison operators","AND / OR / NOT","IN and NOT IN","BETWEEN","LIKE & wildcards","NULL handling (IS NULL)"]},
+  {n:"06",title:"Combining data",color:"#3ecf8e",topics:["INNER JOIN","LEFT / RIGHT JOIN","FULL OUTER JOIN","CROSS JOIN","SELF JOIN","UNION & UNION ALL","Subqueries"]},
+  {n:"07",title:"Row-level functions",color:"#ff7b54",topics:["String functions","Numeric functions","Date functions","COALESCE & NULLIF","CASE WHEN","Type casting (CAST)"]},
+  {n:"08",title:"Aggregation & analytical functions",color:"#a78bfa",topics:["COUNT, SUM, AVG, MIN, MAX","GROUP BY","HAVING","Window functions (ROW_NUMBER)","RANK & DENSE_RANK","LAG & LEAD","PARTITION BY"]},
+  {n:"09",title:"Advanced SQL techniques",color:"#4a9eff",topics:["CTEs (WITH clause)","Recursive CTEs","Correlated subqueries","EXISTS & NOT EXISTS","PIVOT / UNPIVOT","JSON in SQL","EXPLAIN & query plans"]},
+  {n:"10",title:"Performance optimization",color:"#3ecf8e",topics:["Indexes (B-tree, Hash)","CREATE INDEX","Covering indexes","Execution plans","Query rewriting tips","Partitioning","Vacuuming / statistics"]},
+  {n:"11",title:"AI & SQL",color:"#ff7b54",topics:["Prompt engineering for SQL","AI query generation","Text-to-SQL tools","Validating AI output","LLMs + database agents","Use cases & limits"]},
+  {n:"12",title:"SQL projects",color:"#a78bfa",topics:["Sales analytics","User behavior funnel","Trading journal queries","Building a portfolio dataset","Deploying to a live DB","Documentation & presentation"]}
+];
+
+// ── API KEY ───────────────────────────────────────
+const LS_KEY_STORE = 'sql_practice_api_key';
+const LS_STATS     = 'sql_practice_stats';
+function getApiKey(){ return localStorage.getItem(LS_KEY_STORE)||''; }
+function setApiKey(k){ localStorage.setItem(LS_KEY_STORE, k); }
+
+function initKeyUI(){
+  document.getElementById('key-banner').classList.toggle('hidden', !!getApiKey());
+}
+document.getElementById('openKeyModal').addEventListener('click',()=>{
+  document.getElementById('keyInput').value = getApiKey();
+  document.getElementById('keyModal').classList.add('open');
+});
+document.getElementById('keyBtn').addEventListener('click',()=>{
+  document.getElementById('keyInput').value = getApiKey();
+  document.getElementById('keyModal').classList.add('open');
+});
+document.getElementById('cancelKey').addEventListener('click',()=>document.getElementById('keyModal').classList.remove('open'));
+document.getElementById('saveKey').addEventListener('click',()=>{
+  const val=document.getElementById('keyInput').value.trim();
+  if(!val)return;
+  setApiKey(val);
+  document.getElementById('keyModal').classList.remove('open');
+  initKeyUI();
+});
+document.getElementById('keyModal').addEventListener('click',e=>{
+  if(e.target===document.getElementById('keyModal'))document.getElementById('keyModal').classList.remove('open');
+});
+
+// ── PERSISTENCE ───────────────────────────────────
+const todayStr = new Date().toISOString().slice(0,10);
+
+function loadStats(){
+  try{
+    const raw=localStorage.getItem(LS_STATS);
+    if(!raw)return{total:0,correct:0,chStats:{},todayDate:'',todayCount:0};
+    const s=JSON.parse(raw);
+    if(s.todayDate!==todayStr){s.todayCount=0;s.todayDate=todayStr;}
+    return s;
+  }catch(e){return{total:0,correct:0,chStats:{},todayDate:todayStr,todayCount:0};}
+}
+function saveStats(){
+  localStorage.setItem(LS_STATS,JSON.stringify({total:stats.total,correct:stats.correct,chStats,todayDate:todayStr,todayCount}));
+}
+
+// ── STATE ─────────────────────────────────────────
+const saved=loadStats();
+let stats={total:saved.total,correct:saved.correct};
+let chStats=saved.chStats||{};
+let todayCount=saved.todayCount||0;
+let currentChallenge=null;
+let currentChIdx=1;
+
+// ── DOM ───────────────────────────────────────────
+const chapterSel=document.getElementById('chapterSel');
+const genBtn=document.getElementById('genBtn');
+const submitBtn=document.getElementById('submitBtn');
+const sqlInput=document.getElementById('sqlInput');
+const challengeArea=document.getElementById('challengeArea');
+const editorWrap=document.getElementById('editorWrap');
+const feedbackArea=document.getElementById('feedbackArea');
+const submitHint=document.getElementById('submitHint');
+
+CHAPTERS.forEach((ch,i)=>{
+  const o=document.createElement('option');
+  o.value=i; o.textContent=`#${ch.n} — ${ch.title}`;
+  chapterSel.appendChild(o);
+});
+
+// ── URL PARAM: ?chapter=N ─────────────────────────
+const urlChapter = new URLSearchParams(window.location.search).get('chapter');
+if(urlChapter!==null){
+  const idx=parseInt(urlChapter);
+  if(idx>=0&&idx<CHAPTERS.length) chapterSel.value=idx;
+} else {
+  chapterSel.value=1;
+}
+
+// ── SUPABASE AUTH ─────────────────────────────────
+function setSyncPill(msg, ok=false){
+  const el=document.getElementById('syncPill');
+  el.textContent=msg;
+  el.classList.toggle('ok', ok);
+}
+
+async function loadStatsFromSupabase(){
+  if(!currentUser)return;
+  try{
+    const{data}=await supa
+      .from('drill_sessions')
+      .select('chapter_idx,correct')
+      .eq('user_id',currentUser.id)
+      .eq('track',TRACK);
+    if(!data)return;
+    // rebuild chStats and totals from DB
+    const dbChStats={};
+    let dbTotal=0,dbCorrect=0;
+    data.forEach(row=>{
+      const ci=row.chapter_idx;
+      if(!dbChStats[ci])dbChStats[ci]={total:0,correct:0};
+      dbChStats[ci].total++;
+      if(row.correct){dbChStats[ci].correct++;dbCorrect++;}
+      dbTotal++;
+    });
+    // merge: DB wins for cross-device accuracy
+    chStats=dbChStats;
+    stats.total=dbTotal;
+    stats.correct=dbCorrect;
+    saveStats();
+    updateStats();
+    renderWeak();
+    setSyncPill(currentUser.email.split('@')[0]+' ✓', true);
+  }catch(e){
+    console.warn('Supabase stats load error:',e);
+  }
+}
+
+async function saveDrillSession(chIdx, topic, difficulty, score, correct){
+  if(!currentUser)return;
+  try{
+    await supa.from('drill_sessions').insert({
+      user_id:currentUser.id,
+      track:TRACK,
+      chapter_idx:chIdx,
+      topic,
+      difficulty,
+      score,
+      correct,
+      created_at:new Date().toISOString()
+    });
+  }catch(e){console.warn('Drill session save error:',e);}
+}
+
+// ── CLAUDE API ────────────────────────────────────
+async function callClaude(systemMsg,userMsg){
+  const apiKey=getApiKey();
+  if(!apiKey)throw new Error('No API key set. Click "key ⚙" to add your Anthropic API key.');
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key':apiKey,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1024,system:systemMsg,messages:[{role:'user',content:userMsg}]})
+  });
+  const data=await res.json();
+  if(data.error)throw new Error(data.error.message);
+  return data.content.map(b=>b.text||'').join('');
+}
+
+function safeJSON(raw){
+  const cleaned=raw.replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/```\s*$/,'').trim();
+  const start=cleaned.indexOf('{'),end=cleaned.lastIndexOf('}');
+  if(start===-1||end===-1)throw new Error('No JSON object found in response');
+  return JSON.parse(cleaned.slice(start,end+1));
+}
+
+// ── STATS ─────────────────────────────────────────
+function recordResult(ci,ok){
+  if(!chStats[ci])chStats[ci]={total:0,correct:0};
+  chStats[ci].total++;if(ok)chStats[ci].correct++;
+  stats.total++;if(ok)stats.correct++;
+  todayCount++;
+  saveStats();updateStats();renderWeak();
+}
+
+function updateStats(){
+  document.getElementById('sDone').textContent=stats.total;
+  document.getElementById('sCorrect').textContent=stats.correct;
+  document.getElementById('sAcc').textContent=stats.total>0?Math.round(stats.correct/stats.total*100)+'%':'—';
+  document.getElementById('todayCount').textContent=todayCount;
+}
+
+function getAcc(ci){const s=chStats[ci];return(!s||!s.total)?null:Math.round(s.correct/s.total*100);}
+function barColor(p){return p>=80?'var(--green)':p>=50?'var(--blue)':p>=30?'var(--orange)':'var(--red)';}
+
+function renderWeak(){
+  const list=document.getElementById('weakList');
+  const played=CHAPTERS.map((ch,i)=>({i,ch,acc:getAcc(i),n:(chStats[i]||{total:0}).total})).filter(x=>x.acc!==null);
+  if(!played.length){list.innerHTML='<div class="weak-empty">No data yet — complete a few challenges to see your weak spots.</div>';return;}
+  list.innerHTML=[...played].sort((a,b)=>a.acc-b.acc).slice(0,5).map(({i,ch,acc,n})=>`
+    <div class="weak-item">
+      <div class="weak-name" style="color:${ch.color}">#${ch.n} ${ch.title}</div>
+      <div class="weak-bar-bg"><div class="weak-bar-fill" style="width:${acc}%;background:${barColor(acc)}"></div></div>
+      <div class="weak-pct" style="color:${barColor(acc)}">${acc}%</div>
+      <div class="weak-n">${n}x</div>
+    </div>`).join('');
+}
+
+// ── INPUT HANDLERS ────────────────────────────────
+sqlInput.addEventListener('input',()=>{
+  const has=sqlInput.value.trim().length>0;
+  submitBtn.disabled=!has;
+  submitHint.textContent=has?'Ctrl+Enter to submit':'write a query first';
+});
+sqlInput.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();if(!submitBtn.disabled)submitBtn.click();}
+});
+document.getElementById('drillWeakBtn').addEventListener('click',()=>{
+  const played=CHAPTERS.map((ch,i)=>({i,acc:getAcc(i)})).filter(x=>x.acc!==null);
+  if(played.length)chapterSel.value=[...played].sort((a,b)=>a.acc-b.acc)[0].i;
+  generateChallenge();
+});
+genBtn.addEventListener('click',generateChallenge);
+
+// ── GENERATE ──────────────────────────────────────
+async function generateChallenge(){
+  currentChIdx=parseInt(chapterSel.value);
+  const ch=CHAPTERS[currentChIdx];
+  const diff=document.getElementById('diffSel').value;
+  const topic=ch.topics[Math.floor(Math.random()*ch.topics.length)];
+
+  genBtn.disabled=true;genBtn.textContent='Generating…';
+  feedbackArea.innerHTML='';editorWrap.style.display='none';
+  sqlInput.value='';submitBtn.disabled=true;submitHint.textContent='write a query first';
+  challengeArea.innerHTML=`<div class="loading-state"><div class="spinner"></div>generating ${diff} challenge…</div>`;
+
+  const sys=`You are a SQL instructor creating practice exercises. Always respond with ONLY a valid JSON object — no markdown, no code fences, no explanation before or after. Use a trading or stock market context for scenarios where possible.`;
+  const usr=`Create a ${diff} difficulty SQL exercise for the topic "${topic}" (chapter: "${ch.title}"). Return a JSON object with exactly these fields: "scenario" (string, 2-3 sentence setup), "schema" (string, CREATE TABLE + INSERT statements with max 6 sample rows), "question" (string, the SQL task to complete), "hint" (string, one-line hint that doesn't give away the answer).`;
+
+  try{
+    const raw=await callClaude(sys,usr);
+    currentChallenge={...safeJSON(raw),topic,chapter:ch.title,difficulty:diff};
+    renderChallenge(currentChallenge,ch.color,diff);
+  }catch(e){
+    challengeArea.innerHTML=`<div class="err">⚠ ${e.message}</div>`;
+  }
+  genBtn.disabled=false;genBtn.textContent='Generate ↗';
+}
+
+function renderChallenge(c,color,diff){
+  const dc=diff==='easy'?'diff-easy':diff==='hard'?'diff-hard':'diff-medium';
+  challengeArea.innerHTML=`
+    <div class="challenge-box">
+      <div class="ch-topbar">
+        <span class="badge" style="background:${color}20;color:${color}">${c.chapter}</span>
+        <span class="badge" style="background:transparent;color:var(--muted)">${c.topic}</span>
+        <span class="badge ${dc}" style="margin-left:auto">${diff}</span>
+      </div>
+      <div class="ch-body">
+        <div class="scenario">${c.scenario}</div>
+        <div class="schema-block">${esc(c.schema)}</div>
+        <div class="question-text">${c.question}</div>
+        <div class="hint-toggle" id="hintToggle">▸ show hint</div>
+        <div class="hint-body" id="hintBody">${c.hint}</div>
+      </div>
+    </div>`;
+  document.getElementById('hintToggle').addEventListener('click',()=>{
+    const h=document.getElementById('hintBody');h.classList.toggle('show');
+    document.getElementById('hintToggle').textContent=h.classList.contains('show')?'▾ hide hint':'▸ show hint';
+  });
+  editorWrap.style.display='block';
+  setTimeout(()=>sqlInput.focus(),100);
+}
+
+// ── EVALUATE ──────────────────────────────────────
+submitBtn.addEventListener('click',evaluateAnswer);
+
+async function evaluateAnswer(){
+  if(!currentChallenge||!sqlInput.value.trim())return;
+  submitBtn.disabled=true;submitBtn.textContent='Evaluating…';
+  feedbackArea.innerHTML=`<div class="loading-state"><div class="spinner"></div>evaluating your query…</div>`;
+
+  const sys=`You are a SQL instructor evaluating a student's query. Always respond with ONLY a valid JSON object — no markdown, no code fences, no preamble.`;
+  const usr=`Evaluate this student query.\n\nScenario: ${currentChallenge.scenario}\nSchema: ${currentChallenge.schema}\nQuestion: ${currentChallenge.question}\nStudent answer:\n${sqlInput.value.trim()}\n\nReturn a JSON object with exactly these fields: "correct" (boolean), "score" (integer 0-100), "feedback" (string, 2-3 sentences on what was right or wrong), "model_answer" (string, the ideal SQL query), "explanation" (string, 1-2 sentences on the key concept).`;
+
+  try{
+    const raw=await callClaude(sys,usr);
+    const result=safeJSON(raw);
+    const ok=result.correct||result.score>=75;
+    recordResult(currentChIdx,ok);
+    // save to Supabase in background
+    saveDrillSession(currentChIdx,currentChallenge.topic,currentChallenge.difficulty,result.score,ok);
+    renderFeedback(result,ok);
+  }catch(e){
+    feedbackArea.innerHTML=`<div class="err">⚠ Evaluation error: ${e.message}</div>`;
+  }
+  submitBtn.disabled=false;submitBtn.textContent='Evaluate';
+}
+
+function renderFeedback(r,ok){
+  feedbackArea.innerHTML=`
+    <div class="feedback-box ${ok?'fb-correct':'fb-wrong'}">
+      <div class="fb-header">
+        <span style="font-size:16px">${ok?'✓':'✗'}</span>
+        <span class="fb-title" style="color:${ok?'var(--green)':'var(--red)'}">${ok?'Correct':'Not quite'}</span>
+        <span class="fb-score">${r.score}/100</span>
+      </div>
+      <div class="fb-body">
+        <div><div class="fb-lbl">Feedback</div><div class="fb-text">${r.feedback}</div></div>
+        <div><div class="fb-lbl">Model answer</div><div class="fb-code">${esc(r.model_answer)}</div></div>
+        <div><div class="fb-lbl">Key concept</div><div class="fb-text">${r.explanation}</div></div>
+        <div><button class="btn btn-primary" onclick="generateChallenge()">Next challenge ↗</button></div>
+      </div>
+    </div>`;
+}
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ── INIT ──────────────────────────────────────────
+async function init(){
+  initKeyUI();
+  updateStats();
+  renderWeak();
+
+  // Check for existing Supabase session (shared with roadmap)
+  const{data:{session}}=await supa.auth.getSession();
+  if(session){
+    currentUser=session.user;
+    setSyncPill(currentUser.email.split('@')[0]+' ✓',true);
+    await loadStatsFromSupabase();
+  }
+
+  supa.auth.onAuthStateChange(async(event,session)=>{
+    if(event==='SIGNED_IN'&&session){
+      currentUser=session.user;
+      setSyncPill(currentUser.email.split('@')[0]+' ✓',true);
+      await loadStatsFromSupabase();
+    } else if(event==='SIGNED_OUT'){
+      currentUser=null;
+      setSyncPill('not signed in',false);
+    }
+  });
+}
+
+init();
+</script>
+</body>
+</html>
