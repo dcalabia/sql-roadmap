@@ -448,6 +448,169 @@ textarea#notesText::placeholder { color: var(--muted); opacity: 0.5; }
   margin-top: 8px;
 }
 
+/* ── MILESTONES ── */
+.milestones-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.milestone-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.milestone-card:hover { border-color: var(--border2); }
+.milestone-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  cursor: pointer;
+  user-select: none;
+}
+.milestone-card-header .ch-arrow { font-size: 11px; color: var(--muted); transition: transform 0.2s; }
+.milestone-card.open .ch-arrow { transform: rotate(90deg); }
+.milestone-card-body { display: none; border-top: 1px solid var(--border); padding: 14px 16px; }
+.milestone-card.open .milestone-card-body { display: block; }
+.milestone-tag {
+  font-size: 10px;
+  font-family: var(--mono);
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--bg3);
+  color: var(--muted);
+  margin-left: auto;
+}
+
+/* Portfolio projects */
+.project-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.project-item:last-child { border-bottom: none; }
+.project-check {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.18);
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; color: transparent;
+  transition: border-color 0.15s, background 0.15s;
+}
+.project-check:hover { border-color: var(--accent2); color: rgba(62,207,142,0.4); }
+.project-item.done .project-check {
+  background: var(--accent2); border-color: var(--accent2); color: #071a10;
+}
+.project-name {
+  flex: 1;
+  font-size: 12px;
+  color: var(--muted);
+  background: none;
+  border: none;
+  outline: none;
+  font-family: var(--font);
+  cursor: text;
+}
+.project-name:focus {
+  color: var(--text);
+  border-bottom: 1px solid var(--border2);
+}
+.project-item.done .project-name {
+  text-decoration: line-through;
+  text-decoration-color: rgba(139,144,160,0.4);
+}
+
+/* Baara tracker */
+.tracker-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.tracker-stat {
+  background: var(--bg3);
+  border-radius: 8px;
+  padding: 10px 12px;
+  text-align: center;
+}
+.tracker-stat-val {
+  font-family: var(--mono);
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.2;
+}
+.tracker-stat-lbl {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 3px;
+  font-family: var(--mono);
+}
+.tracker-bar-bg {
+  height: 6px;
+  background: var(--bg3);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.tracker-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent1), var(--accent2));
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+.tracker-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.tracker-proj-date {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--muted);
+  flex: 1;
+}
+.streak-badge {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--accent3);
+  background: rgba(255,123,84,0.1);
+  border: 1px solid rgba(255,123,84,0.2);
+  border-radius: 20px;
+  padding: 2px 10px;
+}
+.log-btn {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 5px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid var(--accent2);
+  background: rgba(62,207,142,0.1);
+  color: var(--accent2);
+  transition: background 0.15s;
+}
+.log-btn:hover { background: rgba(62,207,142,0.2); }
+.log-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+  background: transparent;
+}
+.log-btn.logged-today {
+  border-color: var(--muted);
+  color: var(--muted);
+  background: transparent;
+}
+
 /* ── RESPONSIVE ── */
 @media (max-width: 600px) {
   .panel { width: 100vw; }
@@ -485,6 +648,60 @@ textarea#notesText::placeholder { color: var(--muted); opacity: 0.5; }
     </div>
     <span class="progress-label" id="notedLabel" style="color:var(--accent1)">0 noted</span>
   </div>
+  <!-- Milestones -->
+  <div class="milestones-section">
+
+    <!-- Baara Tutorial Tracker -->
+    <div class="milestone-card open" id="baara-card">
+      <div class="milestone-card-header" id="baaraToggle">
+        <span class="ch-num">#00</span>
+        <span class="ch-dot" style="background:#f59e0b"></span>
+        <span class="ch-title" style="font-size:13px">Baara's 30-Hour SQL Course</span>
+        <span class="milestone-tag" id="baaraTag">0 / 30 hrs</span>
+        <span class="ch-arrow">›</span>
+      </div>
+      <div class="milestone-card-body">
+        <div class="tracker-grid">
+          <div class="tracker-stat">
+            <div class="tracker-stat-val" id="bHours">0</div>
+            <div class="tracker-stat-lbl">hrs logged</div>
+          </div>
+          <div class="tracker-stat">
+            <div class="tracker-stat-val" id="bRemaining">30</div>
+            <div class="tracker-stat-lbl">hrs left</div>
+          </div>
+          <div class="tracker-stat">
+            <div class="tracker-stat-val" id="bStreak">0</div>
+            <div class="tracker-stat-lbl">day streak</div>
+          </div>
+        </div>
+        <div class="tracker-bar-bg">
+          <div class="tracker-bar-fill" id="bBarFill" style="width:0%"></div>
+        </div>
+        <div class="tracker-footer">
+          <span class="tracker-proj-date" id="bProjDate">Log your first session to start tracking</span>
+          <span class="streak-badge" id="bStreakBadge" style="display:none">🔥 <span id="bStreakNum">0</span> day streak</span>
+          <button class="log-btn" id="logHourBtn">+ 1 hr today</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Portfolio Projects -->
+    <div class="milestone-card" id="portfolio-card">
+      <div class="milestone-card-header" id="portfolioToggle">
+        <span class="ch-num">#★</span>
+        <span class="ch-dot" style="background:#a78bfa"></span>
+        <span class="ch-title" style="font-size:13px">Portfolio Projects</span>
+        <span class="milestone-tag" id="portfolioTag">0 / 3 done</span>
+        <span class="ch-arrow">›</span>
+      </div>
+      <div class="milestone-card-body">
+        <div id="projectList"></div>
+      </div>
+    </div>
+
+  </div>
+
   <div id="chapters"></div>
 </div>
 
@@ -2425,9 +2642,172 @@ document.getElementById('closeBanner')
     document.getElementById('setup-banner').classList.add('hidden');
   });
 
+// ── MILESTONES ────────────────────────────────────
+const DEFAULT_PROJECTS = [
+  "Trading Journal Dashboard",
+  "Sales Analytics Report",
+  "dbt Model Portfolio"
+];
+
+let milestones = {
+  projects: DEFAULT_PROJECTS.map(name => ({ name, done: false })),
+  baara: {
+    hours: 0,
+    total: 30,
+    streak: 0,
+    lastLogDate: null,
+    startDate: null
+  }
+};
+
+const todayISO = () => new Date().toISOString().slice(0, 10);
+
+function loadMilestones() {
+  const raw = localStorage.getItem('sql_milestones');
+  if (raw) {
+    try {
+      const saved = JSON.parse(raw);
+      if (saved.projects) milestones.projects = saved.projects;
+      if (saved.baara)    milestones.baara    = { ...milestones.baara, ...saved.baara };
+    } catch(e) {}
+  }
+}
+
+function saveMilestones() {
+  localStorage.setItem('sql_milestones', JSON.stringify(milestones));
+}
+
+// ── Baara tracker ─────────────────────────────────
+function refreshBaara() {
+  const b = milestones.baara;
+  const pct = Math.min(100, Math.round(b.hours / b.total * 100));
+  const remaining = Math.max(0, b.total - b.hours);
+  const isComplete = b.hours >= b.total;
+
+  document.getElementById('bHours').textContent = b.hours;
+  document.getElementById('bRemaining').textContent = remaining;
+  document.getElementById('bStreak').textContent = b.streak;
+  document.getElementById('bBarFill').style.width = pct + '%';
+  document.getElementById('baaraTag').textContent = `${b.hours} / ${b.total} hrs`;
+
+  // projected finish date
+  const projEl = document.getElementById('bProjDate');
+  if (isComplete) {
+    projEl.textContent = '✓ Course complete!';
+    projEl.style.color = 'var(--accent2)';
+  } else if (b.startDate) {
+    const daysLeft = remaining; // 1hr/day goal
+    const finish = new Date();
+    finish.setDate(finish.getDate() + daysLeft);
+    const fmt = finish.toLocaleDateString('en-CA', { month:'short', day:'numeric' });
+    projEl.textContent = `At 1hr/day → done by ${fmt} (${daysLeft} days)`;
+    projEl.style.color = '';
+  } else {
+    projEl.textContent = 'Log your first session to start tracking';
+    projEl.style.color = '';
+  }
+
+  // streak badge
+  const badge = document.getElementById('bStreakBadge');
+  const streakNum = document.getElementById('bStreakNum');
+  if (b.streak > 0) {
+    badge.style.display = '';
+    streakNum.textContent = b.streak;
+  } else {
+    badge.style.display = 'none';
+  }
+
+  // log button state
+  const logBtn = document.getElementById('logHourBtn');
+  const alreadyLogged = b.lastLogDate === todayISO();
+  if (isComplete) {
+    logBtn.textContent = '✓ Complete';
+    logBtn.disabled = true;
+  } else if (alreadyLogged) {
+    logBtn.textContent = '✓ logged today';
+    logBtn.classList.add('logged-today');
+    logBtn.disabled = true;
+  } else {
+    logBtn.textContent = '+ 1 hr today';
+    logBtn.classList.remove('logged-today');
+    logBtn.disabled = false;
+  }
+}
+
+document.getElementById('logHourBtn').addEventListener('click', () => {
+  const b = milestones.baara;
+  const today = todayISO();
+  if (b.lastLogDate === today || b.hours >= b.total) return;
+
+  if (!b.startDate) b.startDate = today;
+
+  // streak logic
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yStr = yesterday.toISOString().slice(0, 10);
+  if (b.lastLogDate === yStr) {
+    b.streak += 1;
+  } else if (b.lastLogDate !== today) {
+    b.streak = 1; // reset streak if gap
+  }
+
+  b.hours = Math.min(b.total, b.hours + 1);
+  b.lastLogDate = today;
+
+  saveMilestones();
+  refreshBaara();
+});
+
+// collapse/expand
+document.getElementById('baaraToggle').addEventListener('click', () => {
+  document.getElementById('baara-card').classList.toggle('open');
+});
+
+// ── Portfolio projects ────────────────────────────
+function buildProjects() {
+  const list = document.getElementById('projectList');
+  list.innerHTML = '';
+  milestones.projects.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = 'project-item' + (p.done ? ' done' : '');
+    div.innerHTML = `
+      <div class="project-check" data-idx="${i}" title="Mark complete">✓</div>
+      <input class="project-name" type="text" value="${p.name.replace(/"/g,'&quot;')}"
+        data-idx="${i}" placeholder="Project name…" spellcheck="false">`;
+    list.appendChild(div);
+  });
+
+  list.querySelectorAll('.project-check').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const i = parseInt(btn.dataset.idx);
+      milestones.projects[i].done = !milestones.projects[i].done;
+      saveMilestones();
+      buildProjects();
+      refreshPortfolioTag();
+    });
+  });
+
+  list.querySelectorAll('.project-name').forEach(input => {
+    input.addEventListener('change', () => {
+      milestones.projects[parseInt(input.dataset.idx)].name = input.value;
+      saveMilestones();
+    });
+  });
+}
+
+function refreshPortfolioTag() {
+  const done = milestones.projects.filter(p => p.done).length;
+  document.getElementById('portfolioTag').textContent = `${done} / ${milestones.projects.length} done`;
+}
+
+document.getElementById('portfolioToggle').addEventListener('click', () => {
+  document.getElementById('portfolio-card').classList.toggle('open');
+});
+
 // ── INIT ──────────────────────────────────────────
 async function init() {
   loadLocal();
+  loadMilestones();
   // Apply default templates for any topic not yet written by the user
   Object.keys(DEFAULT_NOTES).forEach(key => {
     if (!notes[key] || !notes[key].trim()) {
@@ -2436,6 +2816,9 @@ async function init() {
   });
   buildChapters();
   refreshUI();
+  refreshBaara();
+  buildProjects();
+  refreshPortfolioTag();
 
   if (CLIENT_ID) {
     document.getElementById('setup-banner')
