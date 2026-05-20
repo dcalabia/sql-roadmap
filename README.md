@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SQL Roadmap</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
   --bg: #0f1117;
@@ -621,11 +622,11 @@ textarea#notesText::placeholder { color: var(--muted); opacity: 0.5; }
 </head>
 <body>
 
-<!-- Setup banner -->
+<!-- Sync banner -->
 <div id="setup-banner">
-  <span>⚙ Google Drive sync not configured.</span>
-  <a href="#" id="openSetupLink">Click here to set up OAuth</a>
-  <span style="color:#a0803a">— notes will save locally until configured.</span>
+  <span>☁ Not signed in.</span>
+  <a href="#" id="openSetupLink">Sign in with email</a>
+  <span style="color:#a0803a">— notes save locally until you sign in.</span>
   <button class="setup-close" id="closeBanner">×</button>
 </div>
 
@@ -634,7 +635,7 @@ textarea#notesText::placeholder { color: var(--muted); opacity: 0.5; }
   <div class="logo">SQL_ROADMAP</div>
   <div class="topbar-right">
     <span class="sync-status" id="syncStatus">not signed in</span>
-    <button class="btn btn-sm" id="signInBtn">Sign in with Google</button>
+    <button class="btn btn-sm" id="signInBtn">Sign in</button>
     <button class="btn btn-sm" id="signOutBtn" style="display:none">Sign out</button>
   </div>
 </div>
@@ -725,33 +726,19 @@ textarea#notesText::placeholder { color: var(--muted); opacity: 0.5; }
   </div>
 </div>
 
-<!-- Setup modal -->
+<!-- Sign in modal -->
 <div class="modal-overlay" id="setupModal">
   <div class="modal">
-    <h2>// google_oauth_setup</h2>
-    <p>To sync notes across devices, you need a free Google OAuth Client ID. Takes about 5 minutes.</p>
-    <ol>
-      <li>Go to <a href="https://console.cloud.google.com" target="_blank">console.cloud.google.com</a></li>
-      <li>Create a new project (e.g. <code>sql-roadmap</code>)</li>
-      <li>Go to <strong>APIs & Services → Library</strong>, search for <strong>Google Drive API</strong> and enable it</li>
-      <li>Go to <strong>APIs & Services → OAuth consent screen</strong>
-        <ul style="margin-top:4px;padding-left:18px;font-size:12px;color:#8b90a0">
-          <li>Choose <strong>External</strong>, fill in app name (anything), your email</li>
-          <li>Skip scopes for now, add yourself as a test user</li>
-        </ul>
-      </li>
-      <li>Go to <strong>APIs & Services → Credentials → Create Credentials → OAuth Client ID</strong></li>
-      <li>Application type: <strong>Web application</strong></li>
-      <li>Under <strong>Authorised JavaScript origins</strong>, add your GitHub Pages URL:<br>
-        <code>https://dcalabia.github.io</code>
-      </li>
-      <li>Click Create — copy the <strong>Client ID</strong> below</li>
-    </ol>
-    <label style="font-size:12px;color:#8b90a0;display:block;margin-bottom:6px">Paste your Client ID:</label>
-    <input type="text" id="clientIdInput" placeholder="xxxxxxxxxxxx.apps.googleusercontent.com">
+    <h2>// sign_in</h2>
+    <p>Enter your email and we'll send you a magic link — click it to sign in and sync your notes across devices.</p>
+    <label style="font-size:12px;color:#8b90a0;display:block;margin-bottom:6px">Email address</label>
+    <input type="email" id="clientIdInput" placeholder="you@example.com" autocomplete="email">
+    <div id="magicLinkMsg" style="display:none;font-size:12px;color:var(--accent2);margin-bottom:12px">
+      ✓ Magic link sent — check your email and click the link to sign in.
+    </div>
     <div class="modal-footer">
       <button class="btn" id="cancelSetup">Cancel</button>
-      <button class="btn btn-primary" id="saveClientId">Save & Sign In</button>
+      <button class="btn btn-primary" id="saveClientId">Send magic link</button>
     </div>
   </div>
 </div>
@@ -2275,15 +2262,17 @@ ORDER BY trade_date;
 -- Redash: good for SQL-first teams`
 };
 
+// ── SUPABASE ──────────────────────────────────────
+const SUPA_URL = 'https://hdylwayatghslwpndxtv.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhkeWx3YXlhdGdoc2x3cG5keHR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMTc5NDEsImV4cCI6MjA5NDg5Mzk0MX0.FD7n4ilbfSJ56iPo7Ni-NSlETg_PGYjmOqhYq6xzlq4';
+const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
+const TRACK = 'sql';
+
 // ── STATE ─────────────────────────────────────────
-let notes = {};      // { "ch0_t2": "my note text", ... }
-let checked = {};    // { "ch0_t2": true, ... }
+let notes = {};
+let checked = {};
 let currentKey = null;
-let driveFileId = null;
-let isSyncing = false;
-let CLIENT_ID = localStorage.getItem('sql_client_id') || '';
-const SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
-const FILE_NAME = 'sql_notes.json';
+let currentUser = null;
 
 // ── BUILD UI ──────────────────────────────────────
 function buildChapters() {
@@ -2328,7 +2317,7 @@ function buildChapters() {
       if (!checked[key]) delete checked[key];
       refreshUI();
       persistLocal();
-      if (isSignedIn()) syncToDrive();
+      if (currentUser) syncProgress();
       return;
     }
     const hdr = e.target.closest('.chapter-header');
@@ -2419,7 +2408,7 @@ function saveNote() {
     hint.textContent = 'Ctrl+S to save';
     hint.className = 'save-hint';
   }, 1800);
-  if (isSignedIn()) syncToDrive();
+  if (isSignedIn()) syncNotes();
 }
 
 document.getElementById('panelClose').addEventListener('click', closePanel);
@@ -2454,21 +2443,8 @@ function loadLocal() {
   }
 }
 
-// ── GOOGLE DRIVE SYNC ─────────────────────────────
-let tokenClient;
-let accessToken = null;
-
-function loadGsi() {
-  return new Promise(resolve => {
-    if (window.google && window.google.accounts) { resolve(); return; }
-    const s = document.createElement('script');
-    s.src = 'https://accounts.google.com/gsi/client';
-    s.onload = resolve;
-    document.head.appendChild(s);
-  });
-}
-
-function isSignedIn() { return !!accessToken; }
+// ── SUPABASE SYNC ─────────────────────────────────
+function isSignedIn() { return !!currentUser; }
 
 function setSyncStatus(msg, cls) {
   const el = document.getElementById('syncStatus');
@@ -2476,171 +2452,171 @@ function setSyncStatus(msg, cls) {
   el.className = 'sync-status' + (cls ? ' ' + cls : '');
 }
 
-async function initAuth() {
-  if (!CLIENT_ID) return;
-  await loadGsi();
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPE,
-    callback: async (resp) => {
-      if (resp.error) {
-        setSyncStatus('auth error', 'err');
-        return;
-      }
-      accessToken = resp.access_token;
-      document.getElementById('signInBtn').style.display = 'none';
-      document.getElementById('signOutBtn').style.display = '';
-      setSyncStatus('syncing…');
-      await loadFromDrive();
-      refreshUI();
-      setSyncStatus('synced ✓', 'ok');
-    }
-  });
+function setSignedInUI(user) {
+  currentUser = user;
+  const email = user.email || '';
+  document.getElementById('signInBtn').style.display = 'none';
+  document.getElementById('signOutBtn').style.display = '';
+  document.getElementById('setup-banner').classList.add('hidden');
+  setSyncStatus(email ? email.split('@')[0] + ' ✓' : 'synced ✓', 'ok');
 }
 
-document.getElementById('signInBtn').addEventListener('click', async () => {
-  if (!CLIENT_ID) {
-    document.getElementById('setupModal').classList.add('open');
-    return;
-  }
-  if (!tokenClient) await initAuth();
-  tokenClient.requestAccessToken({ prompt: 'consent' });
-});
-
-document.getElementById('signOutBtn').addEventListener('click', () => {
-  if (accessToken) {
-    google.accounts.oauth2.revoke(accessToken);
-    accessToken = null;
-  }
+function setSignedOutUI() {
+  currentUser = null;
   document.getElementById('signInBtn').style.display = '';
   document.getElementById('signOutBtn').style.display = 'none';
-  setSyncStatus('signed out');
-});
-
-async function driveRequest(method, url, body) {
-  const headers = { 'Authorization': 'Bearer ' + accessToken };
-  if (body && typeof body === 'object' && !(body instanceof Blob)) {
-    // multipart handled separately
-  }
-  const opts = { method, headers };
-  if (body) opts.body = body;
-  const res = await fetch(url, opts);
-  if (!res.ok) throw new Error(await res.text());
-  return res;
+  setSyncStatus('not signed in');
 }
 
-async function findDriveFile() {
-  const res = await driveRequest(
-    'GET',
-    `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder` +
-    `&q=name%3D%27${FILE_NAME}%27&fields=files(id)`
-  );
-  const data = await res.json();
-  return data.files && data.files[0] ? data.files[0].id : null;
-}
-
-async function loadFromDrive() {
-  try {
-    const id = await findDriveFile();
-    if (!id) { driveFileId = null; return; }
-    driveFileId = id;
-    const res = await driveRequest(
-      'GET',
-      `https://www.googleapis.com/drive/v3/files/${id}?alt=media`
-    );
-    const remote = await res.json();
-    // support old format (plain notes) and new format { notes, checked }
-    if (remote.notes !== undefined) {
-      notes = Object.assign({}, notes, remote.notes);
-      checked = Object.assign({}, checked, remote.checked || {});
-    } else {
-      notes = Object.assign({}, notes, remote);
-    }
-    persistLocal();
-  } catch(e) {
-    console.warn('Drive load error:', e);
-  }
-}
-
-async function syncToDrive() {
-  if (!accessToken || isSyncing) return;
-  isSyncing = true;
+async function loadFromSupabase() {
+  if (!currentUser) return;
   setSyncStatus('syncing…');
   try {
-    const blob = new Blob(
-      [JSON.stringify({ notes, checked })],
-      { type: 'application/json' }
-    );
-    if (driveFileId) {
-      // update existing
-      const form = new FormData();
-      form.append('file', blob, FILE_NAME);
-      await fetch(
-        `https://www.googleapis.com/upload/drive/v3/files/${driveFileId}` +
-        `?uploadType=multipart`,
-        {
-          method: 'PATCH',
-          headers: { 'Authorization': 'Bearer ' + accessToken },
-          body: form
-        }
-      );
-    } else {
-      // create new in appDataFolder
-      const meta = JSON.stringify({
-        name: FILE_NAME,
-        parents: ['appDataFolder']
+    // Load notes
+    const { data: notesData } = await supa
+      .from('notes')
+      .select('topic_key, content')
+      .eq('user_id', currentUser.id)
+      .eq('track', TRACK);
+    if (notesData) {
+      notesData.forEach(row => {
+        if (row.content && row.content.trim()) notes[row.topic_key] = row.content;
       });
-      const form = new FormData();
-      form.append('metadata',
-        new Blob([meta], { type: 'application/json' })
-      );
-      form.append('file', blob, FILE_NAME);
-      const res = await fetch(
-        'https://www.googleapis.com/upload/drive/v3/files' +
-        '?uploadType=multipart&fields=id',
-        {
-          method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + accessToken },
-          body: form
-        }
-      );
-      const data = await res.json();
-      driveFileId = data.id;
     }
-    setSyncStatus('synced ✓', 'ok');
+
+    // Load checked
+    const { data: progressData } = await supa
+      .from('topic_progress')
+      .select('topic_key')
+      .eq('user_id', currentUser.id)
+      .eq('track', TRACK)
+      .eq('completed', true);
+    if (progressData) {
+      progressData.forEach(row => { checked[row.topic_key] = true; });
+    }
+
+    // Load milestones
+    const { data: mData } = await supa
+      .from('milestones')
+      .select('milestone_key, data')
+      .eq('user_id', currentUser.id)
+      .eq('track', TRACK);
+    if (mData) {
+      mData.forEach(row => {
+        if (row.milestone_key === 'baara') {
+          milestones.baara = { ...milestones.baara, ...row.data };
+        } else if (row.milestone_key === 'projects') {
+          milestones.projects = row.data;
+        }
+      });
+    }
+
+    persistLocal();
+    refreshUI();
+    refreshBaara();
+    buildProjects();
+    refreshPortfolioTag();
+    setSyncStatus(currentUser.email.split('@')[0] + ' ✓', 'ok');
   } catch(e) {
     setSyncStatus('sync error', 'err');
-    console.warn('Drive sync error:', e);
+    console.warn('Supabase load error:', e);
   }
-  isSyncing = false;
 }
 
-// ── SETUP MODAL ───────────────────────────────────
-document.getElementById('openSetupLink')
-  .addEventListener('click', e => {
-    e.preventDefault();
-    document.getElementById('setupModal').classList.add('open');
+async function syncNotes() {
+  if (!currentUser) return;
+  try {
+    const rows = Object.entries(notes).map(([topic_key, content]) => ({
+      user_id: currentUser.id, track: TRACK, topic_key, content,
+      updated_at: new Date().toISOString()
+    }));
+    if (rows.length) {
+      await supa.from('notes').upsert(rows, { onConflict: 'user_id,track,topic_key' });
+    }
+  } catch(e) { console.warn('Notes sync error:', e); }
+}
+
+async function syncProgress() {
+  if (!currentUser) return;
+  try {
+    // Upsert completed topics
+    const completedRows = Object.keys(checked).filter(k => checked[k]).map(topic_key => ({
+      user_id: currentUser.id, track: TRACK, topic_key, completed: true,
+      completed_at: new Date().toISOString()
+    }));
+    if (completedRows.length) {
+      await supa.from('topic_progress').upsert(completedRows, { onConflict: 'user_id,track,topic_key' });
+    }
+    // Delete unchecked
+    const uncheckedKeys = Object.keys(checked).filter(k => !checked[k]);
+    if (uncheckedKeys.length) {
+      await supa.from('topic_progress')
+        .delete()
+        .eq('user_id', currentUser.id)
+        .eq('track', TRACK)
+        .in('topic_key', uncheckedKeys);
+    }
+  } catch(e) { console.warn('Progress sync error:', e); }
+}
+
+async function syncMilestones() {
+  if (!currentUser) return;
+  try {
+    await supa.from('milestones').upsert([
+      { user_id: currentUser.id, track: TRACK, milestone_key: 'baara',
+        data: milestones.baara, updated_at: new Date().toISOString() },
+      { user_id: currentUser.id, track: TRACK, milestone_key: 'projects',
+        data: milestones.projects, updated_at: new Date().toISOString() }
+    ], { onConflict: 'user_id,track,milestone_key' });
+  } catch(e) { console.warn('Milestones sync error:', e); }
+}
+
+// ── AUTH UI ───────────────────────────────────────
+document.getElementById('signInBtn').addEventListener('click', () => {
+  document.getElementById('magicLinkMsg').style.display = 'none';
+  document.getElementById('clientIdInput').value = '';
+  document.getElementById('setupModal').classList.add('open');
+});
+
+document.getElementById('signOutBtn').addEventListener('click', async () => {
+  await supa.auth.signOut();
+  setSignedOutUI();
+});
+
+document.getElementById('openSetupLink').addEventListener('click', e => {
+  e.preventDefault();
+  document.getElementById('magicLinkMsg').style.display = 'none';
+  document.getElementById('clientIdInput').value = '';
+  document.getElementById('setupModal').classList.add('open');
+});
+
+document.getElementById('cancelSetup').addEventListener('click', () => {
+  document.getElementById('setupModal').classList.remove('open');
+});
+
+document.getElementById('saveClientId').addEventListener('click', async () => {
+  const email = document.getElementById('clientIdInput').value.trim();
+  if (!email) return;
+  const { error } = await supa.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: window.location.href }
   });
-document.getElementById('cancelSetup')
-  .addEventListener('click', () => {
-    document.getElementById('setupModal').classList.remove('open');
-  });
-document.getElementById('saveClientId')
-  .addEventListener('click', async () => {
-    const val = document.getElementById('clientIdInput')
-      .value.trim();
-    if (!val) return;
-    CLIENT_ID = val;
-    localStorage.setItem('sql_client_id', CLIENT_ID);
-    document.getElementById('setupModal').classList.remove('open');
-    document.getElementById('setup-banner').classList.add('hidden');
-    await initAuth();
-    tokenClient.requestAccessToken({ prompt: 'consent' });
-  });
-document.getElementById('closeBanner')
-  .addEventListener('click', () => {
-    document.getElementById('setup-banner').classList.add('hidden');
-  });
+  if (error) {
+    document.getElementById('magicLinkMsg').style.display = 'block';
+    document.getElementById('magicLinkMsg').textContent = '⚠ ' + error.message;
+    document.getElementById('magicLinkMsg').style.color = 'var(--accent3)';
+  } else {
+    document.getElementById('magicLinkMsg').style.display = 'block';
+    document.getElementById('magicLinkMsg').style.color = 'var(--accent2)';
+    document.getElementById('magicLinkMsg').textContent =
+      '✓ Magic link sent — check your email and click the link to sign in.';
+    document.getElementById('saveClientId').disabled = true;
+  }
+});
+
+document.getElementById('closeBanner').addEventListener('click', () => {
+  document.getElementById('setup-banner').classList.add('hidden');
+});
 
 // ── MILESTONES ────────────────────────────────────
 const DEFAULT_PROJECTS = [
@@ -2755,6 +2731,7 @@ document.getElementById('logHourBtn').addEventListener('click', () => {
   b.lastLogDate = today;
 
   saveMilestones();
+  if (currentUser) syncMilestones();
   refreshBaara();
 });
 
@@ -2782,6 +2759,7 @@ function buildProjects() {
       const i = parseInt(btn.dataset.idx);
       milestones.projects[i].done = !milestones.projects[i].done;
       saveMilestones();
+      if (currentUser) syncMilestones();
       buildProjects();
       refreshPortfolioTag();
     });
@@ -2808,11 +2786,8 @@ document.getElementById('portfolioToggle').addEventListener('click', () => {
 async function init() {
   loadLocal();
   loadMilestones();
-  // Apply default templates for any topic not yet written by the user
   Object.keys(DEFAULT_NOTES).forEach(key => {
-    if (!notes[key] || !notes[key].trim()) {
-      notes[key] = DEFAULT_NOTES[key];
-    }
+    if (!notes[key] || !notes[key].trim()) notes[key] = DEFAULT_NOTES[key];
   });
   buildChapters();
   refreshUI();
@@ -2820,11 +2795,33 @@ async function init() {
   buildProjects();
   refreshPortfolioTag();
 
-  if (CLIENT_ID) {
-    document.getElementById('setup-banner')
-      .classList.add('hidden');
-    await initAuth();
+  // Check for existing Supabase session (handles magic link redirect too)
+  const { data: { session } } = await supa.auth.getSession();
+  if (session) {
+    setSignedInUI(session.user);
+    await loadFromSupabase();
+    refreshUI();
+    refreshBaara();
+    buildProjects();
+    refreshPortfolioTag();
+  } else {
+    // Banner only shows if not signed in
+    document.getElementById('setup-banner').classList.remove('hidden');
   }
+
+  // Listen for auth changes (magic link click lands here)
+  supa.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session) {
+      setSignedInUI(session.user);
+      await loadFromSupabase();
+      refreshUI();
+      refreshBaara();
+      buildProjects();
+      refreshPortfolioTag();
+    } else if (event === 'SIGNED_OUT') {
+      setSignedOutUI();
+    }
+  });
 }
 
 init();
