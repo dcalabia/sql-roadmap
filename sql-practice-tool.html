@@ -61,9 +61,11 @@ option{background:var(--bg2);}
 .challenge-box{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:14px;}
 .ch-topbar{display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--bg3);border-bottom:1px solid var(--border);}
 .badge{font-family:var(--mono);font-size:10px;padding:2px 8px;border-radius:20px;}
-.diff-easy{background:rgba(62,207,142,.15);color:var(--green);}
-.diff-medium{background:rgba(74,158,255,.15);color:var(--blue);}
-.diff-hard{background:rgba(167,139,250,.15);color:var(--purple);}
+.diff-beginner{background:rgba(62,207,142,.1);color:#3ecf8e;border:1px solid rgba(62,207,142,.2);}
+.diff-easy{background:rgba(74,158,255,.12);color:#4a9eff;border:1px solid rgba(74,158,255,.2);}
+.diff-medium{background:rgba(251,191,36,.12);color:#fbbf24;border:1px solid rgba(251,191,36,.2);}
+.diff-hard{background:rgba(167,139,250,.12);color:#a78bfa;border:1px solid rgba(167,139,250,.2);}
+.diff-expert{background:rgba(248,113,113,.12);color:#f87171;border:1px solid rgba(248,113,113,.2);}
 .ch-body{padding:18px 20px;}
 .scenario{font-size:13px;line-height:1.75;color:var(--muted2);margin-bottom:16px;}
 .schema-block{font-family:var(--mono);font-size:11px;line-height:1.65;background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:12px 14px;color:#9bbfef;margin-bottom:16px;white-space:pre-wrap;overflow-x:auto;}
@@ -161,9 +163,11 @@ textarea::placeholder{color:var(--muted);opacity:.45;}
     <div class="ctrl-group"><label>Chapter</label><select id="chapterSel"></select></div>
     <div class="ctrl-group"><label>Difficulty</label>
       <select id="diffSel">
-        <option value="easy">Easy</option>
-        <option value="medium" selected>Medium</option>
+        <option value="beginner">Beginner</option>
+        <option value="easy" selected>Easy</option>
+        <option value="medium">Medium</option>
         <option value="hard">Hard</option>
+        <option value="expert">Expert</option>
       </select>
     </div>
     <button class="btn btn-primary" id="genBtn">Generate ↗</button>
@@ -430,8 +434,16 @@ async function generateChallenge(){
   sqlInput.value='';submitBtn.disabled=true;submitHint.textContent='write a query first';
   challengeArea.innerHTML=`<div class="loading-state"><div class="spinner"></div>generating ${diff} challenge…</div>`;
 
-  const sys=`You are a SQL instructor creating practice exercises. Always respond with ONLY a valid JSON object — no markdown, no code fences, no explanation before or after. Use a trading or stock market context for scenarios where possible.`;
-  const usr=`Create a ${diff} difficulty SQL exercise for the topic "${topic}" (chapter: "${ch.title}"). Return a JSON object with exactly these fields: "scenario" (string, 2-3 sentence setup), "schema" (string, CREATE TABLE + INSERT statements with max 6 sample rows), "question" (string, the SQL task to complete), "hint" (string, one-line hint that doesn't give away the answer).`;
+  const diffDesc = {
+    beginner: 'single table, one clause only (e.g. SELECT with WHERE or ORDER BY, no joins, no aggregation)',
+    easy:     'single table, 2-3 clauses (SELECT + WHERE + ORDER BY or simple GROUP BY, no joins)',
+    medium:   'two tables with a JOIN, simple aggregation with GROUP BY and HAVING',
+    hard:     'window functions (ROW_NUMBER, LAG, SUM OVER), CTEs, or multi-table joins',
+    expert:   'correlated subqueries, recursive CTEs, multiple CTEs chained, or query optimization'
+  }[diff];
+
+  const sys=`You are a SQL instructor creating practice exercises. Always respond with ONLY a valid JSON object — no markdown, no code fences, no explanation before or after. Use a trading or stock market context for scenarios where possible. Format all SQL in the response with each major clause (SELECT, FROM, WHERE, JOIN, GROUP BY, HAVING, ORDER BY) on its own line.`;
+  const usr=`Create a ${diff} difficulty SQL exercise (${diffDesc}) for the topic "${topic}" (chapter: "${ch.title}"). Return a JSON object with exactly these fields: "scenario" (string, 2-3 sentence setup), "schema" (string, CREATE TABLE + INSERT statements with max 6 sample rows, each clause on its own line), "question" (string, the SQL task to complete), "hint" (string, one-line hint that doesn't give away the answer).`;
 
   try{
     const raw=await callClaude(sys,usr);
@@ -444,7 +456,7 @@ async function generateChallenge(){
 }
 
 function renderChallenge(c,color,diff){
-  const dc=diff==='easy'?'diff-easy':diff==='hard'?'diff-hard':'diff-medium';
+  const dc = {beginner:'diff-beginner', easy:'diff-easy', medium:'diff-medium', hard:'diff-hard', expert:'diff-expert'}[diff] || 'diff-easy';
   challengeArea.innerHTML=`
     <div class="challenge-box">
       <div class="ch-topbar">
@@ -476,8 +488,8 @@ async function evaluateAnswer(){
   submitBtn.disabled=true;submitBtn.textContent='Evaluating…';
   feedbackArea.innerHTML=`<div class="loading-state"><div class="spinner"></div>evaluating your query…</div>`;
 
-  const sys=`You are a SQL instructor evaluating a student's query. Always respond with ONLY a valid JSON object — no markdown, no code fences, no preamble.`;
-  const usr=`Evaluate this student query.\n\nScenario: ${currentChallenge.scenario}\nSchema: ${currentChallenge.schema}\nQuestion: ${currentChallenge.question}\nStudent answer:\n${sqlInput.value.trim()}\n\nReturn a JSON object with exactly these fields: "correct" (boolean), "score" (integer 0-100), "feedback" (string, 2-3 sentences on what was right or wrong), "model_answer" (string, the ideal SQL query), "explanation" (string, 1-2 sentences on the key concept).`;
+  const sys=`You are a SQL instructor evaluating a student's query. Always respond with ONLY a valid JSON object — no markdown, no code fences, no preamble. Format all SQL with each major clause (SELECT, FROM, WHERE, JOIN, GROUP BY, HAVING, ORDER BY) on its own line with proper indentation.`;
+  const usr=`Evaluate this student query.\n\nScenario: ${currentChallenge.scenario}\nSchema: ${currentChallenge.schema}\nQuestion: ${currentChallenge.question}\nStudent answer:\n${sqlInput.value.trim()}\n\nReturn a JSON object with exactly these fields: "correct" (boolean), "score" (integer 0-100), "feedback" (string, 2-3 sentences on what was right or wrong), "model_answer" (string, the ideal SQL query with each clause on its own line), "explanation" (string, 1-2 sentences on the key concept).`;
 
   try{
     const raw=await callClaude(sys,usr);
